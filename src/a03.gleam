@@ -6,9 +6,9 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/regex
-import gleam/result
 import gleam/string
 import stdin.{stdin}
+import util.{parse, re, reduce}
 
 pub fn main() {
   case argv.load().arguments {
@@ -18,41 +18,29 @@ pub fn main() {
   |> io.println
 }
 
-fn parse() {
+fn in() {
   stdin()
   |> iterator.to_list
   |> string.join("")
 }
 
 fn a() {
-  let mul =
-    regex.compile("mul\\((\\d+),(\\d+)\\)", with: regex.Options(False, False))
-    |> result.lazy_unwrap(fn() { panic })
-  parse()
+  let mul = re("mul\\((\\d+),(\\d+)\\)")
+  in()
   |> regex.scan(with: mul)
   |> list.map(fn(m) {
     m.submatches
     |> option.values
-    |> list.map(fn(n) {
-      n
-      |> int.parse
-      |> result.lazy_unwrap(fn() { panic })
-    })
-    |> list.reduce(int.multiply)
-    |> result.lazy_unwrap(fn() { panic })
+    |> list.map(parse)
+    |> reduce(int.multiply)
   })
   |> int.sum
   |> int.to_string
 }
 
 fn b() {
-  let mul =
-    regex.compile(
-      "mul\\((\\d+),(\\d+)\\)|don't\\(\\)|do\\(\\)",
-      with: regex.Options(False, False),
-    )
-    |> result.lazy_unwrap(fn() { panic })
-  parse()
+  let mul = re("mul\\((\\d+),(\\d+)\\)|don't\\(\\)|do\\(\\)")
+  in()
   |> regex.scan(with: mul)
   |> list.fold(#(True, 0), fn(acc, m) {
     let #(on, sum) = acc
@@ -63,13 +51,8 @@ fn b() {
         let s =
           m.submatches
           |> option.values
-          |> list.map(fn(n) {
-            n
-            |> int.parse
-            |> result.lazy_unwrap(fn() { panic })
-          })
-          |> list.reduce(int.multiply)
-          |> result.lazy_unwrap(fn() { panic })
+          |> list.map(parse)
+          |> reduce(int.multiply)
         #(on, s + sum)
       }
       _ -> #(on, sum)
