@@ -23,3 +23,7 @@ pub fn reduce(l, f) {
   |> list.reduce(f)
   |> unwrap
 }
+
+pub fn id(a) {
+  a
+}

@@ -7,6 +7,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import stdin.{stdin}
+import util.{id}
 
 pub fn main() {
   case argv.load().arguments {
@@ -36,10 +37,6 @@ fn parse() {
   let s_a = order_int(a)
   let s_b = order_int(b)
   #(s_a, s_b)
-}
-
-fn id(a) {
-  a
 }
 
 fn a() {
