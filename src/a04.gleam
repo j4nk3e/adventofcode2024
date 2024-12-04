@@ -53,24 +53,26 @@ fn word(map, pos, dir, w) {
   }
 }
 
+const directions = [
+  #(1, 0), #(1, 1), #(0, 1), #(-1, 1), #(-1, 0), #(-1, -1), #(0, -1), #(1, -1),
+]
+
+const mas = ["M", "A", "S"]
+
 fn a() {
   let m = in()
   m
   |> dict.to_list
   |> list.fold(0, fn(acc, e) {
     let #(pos, char) = e
-    let w = ["M", "A", "S"]
     case char {
       "X" ->
         acc
-        + word(m, pos, #(1, 0), w)
-        + word(m, pos, #(1, 1), w)
-        + word(m, pos, #(0, 1), w)
-        + word(m, pos, #(-1, 1), w)
-        + word(m, pos, #(-1, 0), w)
-        + word(m, pos, #(-1, -1), w)
-        + word(m, pos, #(0, -1), w)
-        + word(m, pos, #(1, -1), w)
+        + {
+          directions
+          |> list.map(fn(d) { word(m, pos, d, mas) })
+          |> int.sum
+        }
       _ -> acc
     }
   })
