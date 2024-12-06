@@ -89,25 +89,27 @@ fn a() {
   move(start, N, f, set.new())
 }
 
-fn loop(pos, dir, f, history, obstacle) {
+fn loop(pos, dir, f, history) {
   let next = pos |> next(dir)
   case dict.get(f, next) {
     Error(_) -> False
-    Ok(Barrier) ->
-      case set.contains(history, #(pos, dir)) {
+    Ok(Barrier) if dir == N ->
+      case set.contains(history, pos) {
         True -> True
-        False ->
-          loop(pos, turn(dir), f, history |> set.insert(#(pos, dir)), obstacle)
+        False -> loop(pos, turn(dir), f, history |> set.insert(pos))
       }
-    Ok(_) if obstacle == next -> loop(pos, turn(dir), f, history, obstacle)
-    Ok(_) -> loop(next, dir, f, history, obstacle)
+    Ok(Barrier) -> loop(pos, turn(dir), f, history)
+    Ok(_) -> loop(next, dir, f, history)
   }
 }
 
 fn b() {
   let #(f, start) = in()
   move(start, N, f, set.from_list([]))
-  |> set.filter(fn(p) { p != start && loop(start, N, f, set.from_list([]), p) })
+  |> set.filter(fn(p) {
+    p != start
+    && loop(start, N, f |> dict.insert(p, Barrier), set.from_list([]))
+  })
 }
 
 pub fn main() {
