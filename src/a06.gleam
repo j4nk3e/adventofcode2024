@@ -7,8 +7,9 @@ import gleam/list
 import gleam/pair
 import gleam/set
 import gleam/string
+import parallel_map.{MatchSchedulersOnline, list_pmap}
 import stdin.{stdin}
-import util.{unwrap}
+import util.{id, unwrap}
 
 type Field {
   Free
@@ -87,6 +88,7 @@ fn move(pos, dir, f, history) {
 fn a() {
   let #(f, start) = in()
   move(start, N, f, set.new())
+  |> set.size
 }
 
 fn loop(pos, dir, f, history) {
@@ -106,10 +108,16 @@ fn loop(pos, dir, f, history) {
 fn b() {
   let #(f, start) = in()
   move(start, N, f, set.from_list([]))
-  |> set.filter(fn(p) {
-    p != start
-    && loop(start, N, f |> dict.insert(p, Barrier), set.from_list([]))
-  })
+  |> set.filter(fn(p) { p != start })
+  |> set.to_list
+  |> list_pmap(
+    fn(p) { loop(start, N, f |> dict.insert(p, Barrier), set.from_list([])) },
+    MatchSchedulersOnline,
+    100,
+  )
+  |> list.map(unwrap)
+  |> list.filter(id)
+  |> list.length
 }
 
 pub fn main() {
@@ -117,7 +125,6 @@ pub fn main() {
     [] -> a()
     _ -> b()
   }
-  |> set.size
   |> int.to_string
   |> io.println
 }
