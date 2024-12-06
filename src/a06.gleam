@@ -12,8 +12,8 @@ import stdin.{stdin}
 import util.{id, unwrap}
 
 type Field {
-  Free
   Barrier
+  Free
   Start
 }
 
@@ -44,7 +44,7 @@ fn next(pos, dir) {
 }
 
 fn in() {
-  let f =
+  let l =
     stdin()
     |> iterator.index
     |> iterator.flat_map(fn(row) {
@@ -66,52 +66,69 @@ fn in() {
       })
     })
     |> iterator.to_list
-    |> dict.from_list
+
+  let size = l |> list.last |> unwrap |> pair.first
+  let f = l |> dict.from_list
   let start =
     dict.filter(f, fn(_k, v) { v == Start })
     |> dict.to_list
     |> list.first
     |> unwrap
     |> pair.first
-  #(f, start)
+  let s =
+    l
+    |> list.filter(fn(f) { { f |> pair.second } == Barrier })
+    |> list.map(pair.first)
+    |> set.from_list
+  #(s, size, start)
 }
 
-fn move(pos, dir, f, history) {
+fn move(pos, dir, f, size, history) {
   let next = pos |> next(dir)
-  case dict.get(f, next) {
-    Error(_) -> history |> set.insert(pos)
-    Ok(Barrier) -> move(pos, turn(dir), f, history)
-    Ok(_) -> move(next, dir, f, history |> set.insert(pos))
+  let #(x, y) = pos
+  let #(w, h) = size
+  case x > w || y > h || x < 0 || y < 0 {
+    True -> history
+    False ->
+      case set.contains(f, next) {
+        True -> move(pos, turn(dir), f, size, history)
+        False -> move(next, dir, f, size, history |> set.insert(pos))
+      }
   }
 }
 
 fn a() {
-  let #(f, start) = in()
-  move(start, N, f, set.new())
+  let #(f, size, start) = in()
+  move(start, N, f, size, set.new())
   |> set.size
 }
 
-fn loop(pos, dir, f, history) {
+fn loop(pos, dir, f, size, history) {
   let next = pos |> next(dir)
-  case dict.get(f, next) {
-    Error(_) -> False
-    Ok(Barrier) if dir == N ->
-      case set.contains(history, pos) {
-        True -> True
-        False -> loop(pos, turn(dir), f, history |> set.insert(pos))
+  let #(x, y) = pos
+  let #(w, h) = size
+  case x > w || y > h || x < 0 || y < 0 {
+    True -> False
+    False ->
+      case set.contains(f, next) {
+        True if dir == N ->
+          case set.contains(history, pos) {
+            True -> True
+            False -> loop(pos, turn(dir), f, size, history |> set.insert(pos))
+          }
+        True -> loop(pos, turn(dir), f, size, history)
+        False -> loop(next, dir, f, size, history)
       }
-    Ok(Barrier) -> loop(pos, turn(dir), f, history)
-    Ok(_) -> loop(next, dir, f, history)
   }
 }
 
 fn b() {
-  let #(f, start) = in()
-  move(start, N, f, set.from_list([]))
+  let #(f, size, start) = in()
+  move(start, N, f, size, set.from_list([]))
   |> set.filter(fn(p) { p != start })
   |> set.to_list
   |> list_pmap(
-    fn(p) { loop(start, N, f |> dict.insert(p, Barrier), set.from_list([])) },
+    fn(p) { loop(start, N, f |> set.insert(p), size, set.from_list([])) },
     MatchSchedulersOnline,
     100,
   )
