@@ -76,14 +76,23 @@ fn b() {
   |> dict.keys
   |> list.map(fn(start) {
     iterator.range(from: 0, to: 8)
-    |> iterator.fold(from: [start], with: fn(acc, n) {
+    |> iterator.fold(from: [#(start, 1)], with: fn(acc, n) {
       let r =
         acc
-        |> list.flat_map(fn(e) { next(e, n, map) })
+        |> list.flat_map(fn(e) {
+          let #(p, count) = e
+          next(p, n, map) |> list.map(fn(n) { #(n, count) })
+        })
+        |> list.group(pair.first)
+        |> dict.to_list
+        |> list.map(fn(q) {
+          let #(p, l) = q
+          #(p, l |> list.map(pair.second) |> int.sum)
+        })
       r
     })
   })
-  |> list.map(list.length)
+  |> list.map(fn(l) { l |> list.map(pair.second) |> int.sum })
   |> int.sum
   |> int.to_string
 }
