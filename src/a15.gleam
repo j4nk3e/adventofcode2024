@@ -7,6 +7,7 @@ import gleam/list
 import gleam/pair
 import gleam/result
 import gleam/string
+import gleam_community/ansi
 import stdin.{stdin}
 import util.{unwrap}
 
@@ -188,7 +189,10 @@ fn in_b() {
 
 fn move_b(map, robot, moves) {
   case moves {
-    [] -> #(map, robot)
+    [] -> {
+      print(map, robot, "@")
+      map
+    }
     [dir, ..tl] -> {
       let #(map, robot) = push_b(map, robot, dir)
       move_b(map, robot, tl)
@@ -213,8 +217,7 @@ fn move_boxes(map, boxes, dir) {
   })
 }
 
-fn print(m) {
-  let #(map, robot) = m
+fn print(map, robot, dir) {
   let map = map |> dict.insert(robot, RobotB)
   let #(w, h) =
     map
@@ -231,18 +234,17 @@ fn print(m) {
     iterator.range(0, w)
     |> iterator.map(fn(x) {
       case dict.get(map, #(x, y)) {
-        Ok(WallB) -> "#"
-        Ok(BoxE) -> "]"
-        Ok(BoxW) -> "["
-        Ok(RobotB) -> "@"
-        Error(_) -> "."
+        Ok(WallB) -> ansi.white("#")
+        Ok(BoxE) -> ansi.blue("]")
+        Ok(BoxW) -> ansi.blue("[")
+        Ok(RobotB) -> ansi.red(dir)
+        Error(_) -> " "
       }
     })
     |> iterator.to_list
     |> string.join("")
     |> io.println
   })
-  m
 }
 
 fn push_box_b(map, boxes, dir, acc) {
@@ -284,8 +286,6 @@ fn b() {
 
   map
   |> move_b(robot, moves)
-  |> print()
-  |> pair.first
   |> dict.filter(fn(_k, v) { v == BoxW })
   |> dict.keys
   |> list.map(score)
