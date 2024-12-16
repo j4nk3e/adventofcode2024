@@ -4,6 +4,8 @@ import gleam/int
 import gleam/io
 import gleam/iterator
 import gleam/list
+import gleam/option.{None, Some}
+import gleam/order
 import gleam/pair
 import gleam/result
 import gleam/set
@@ -106,71 +108,72 @@ fn next(map, pos, dir) {
   })
 }
 
-fn cost(o) {
-  let #(_, _, c, _) = o
-  c
-}
-
-fn comp_cost(a, b) {
-  int.compare(cost(a), cost(b))
-}
-
-fn find(map, pos, dir, end, options, tc, hist, max) {
-  let n =
+fn find(map, pos, dir, tc, hist, options, end, max) {
+  let o =
     next(map, pos, dir)
     |> list.map(fn(o) {
       let #(p, d, c) = o
       #(p, d, c + tc, set.insert(hist, p))
     })
-  let o =
-    list.flatten([options, n])
-    |> list.group(fn(o) {
-      let #(p, d, _c, _h) = o
-      #(p, d)
+    |> list.fold(options, fn(acc, o) {
+      let #(p, d, c, h) = o
+      acc
+      |> dict.upsert(#(p, d), fn(a) {
+        case a {
+          None -> #(c, h)
+          Some(#(cx, hx)) ->
+            case int.compare(c, cx) {
+              order.Lt -> #(c, h)
+              order.Gt -> #(cx, hx)
+              order.Eq -> #(c, set.union(h, hx))
+            }
+        }
+      })
     })
-    |> dict.map_values(fn(_k, v) {
-      let o =
-        v
-        |> list.sort(comp_cost)
-
-      let #(p, d, c, _) =
-        o
-        |> list.first
-        |> unwrap
-      let h =
-        o
-        |> list.take_while(fn(o) {
-          let #(_p, _d, cx, _h) = o
-          cx == c
-        })
-        |> list.fold(set.new(), fn(acc, o) {
-          let #(_p, _d, _c, h) = o
-          set.union(acc, h)
-        })
-
-      #(p, d, c, h)
+  let next =
+    o
+    |> dict.fold(#(max, []), fn(acc, k, v) {
+      let #(m, l) = acc
+      let #(p, d) = k
+      let #(c, h) = v
+      case int.compare(c, m) {
+        order.Lt -> #(c, [#(p, d, c, h)])
+        order.Gt -> #(m, l)
+        order.Eq -> #(m, [#(p, d, c, h), ..l])
+      }
     })
-    |> dict.values
-    |> list.sort(comp_cost)
-  case o {
-    [] -> #(-1, hist)
-    [#(_, _, c, _), ..] if c > max -> #(max, hist)
-    [#(p, d, c, h), ..t] if p == end ->
-      find(map, p, d, end, t, c, set.union(h, hist), c)
-    [#(p, d, c, h), ..t] -> find(map, p, d, end, t, c, h, max)
+    |> pair.second
+  case next {
+    [] -> #(max, hist)
+    [#(p, d, c, h), ..] if p == end ->
+      find(map, p, d, c, set.union(h, hist), o |> dict.delete(#(p, d)), end, c)
+    [#(p, d, c, h), ..] ->
+      find(map, p, d, c, h, o |> dict.delete(#(p, d)), end, max)
   }
 }
 
-fn a() {
+fn f() {
   let #(map, start, end) = in()
-  find(map, start, Right, end, [], 0, set.from_list([start]), 999_999_999)
+  find(
+    map,
+    start,
+    Right,
+    0,
+    set.from_list([start]),
+    dict.new(),
+    end,
+    999_999_999,
+  )
+}
+
+fn a() {
+  f()
   |> pair.first
   |> int.to_string
 }
 
 fn b() {
-  let #(map, start, end) = in()
-  find(map, start, Right, end, [], 0, set.from_list([start]), 999_999_999)
+  f()
   |> pair.second
   |> set.size
   |> int.to_string
