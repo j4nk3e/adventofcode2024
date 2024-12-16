@@ -10,6 +10,7 @@ import gleam/pair
 import gleam/result
 import gleam/set
 import gleam/string
+import gleam_community/ansi
 import stdin.{stdin}
 import util.{unwrap}
 
@@ -108,6 +109,41 @@ fn next(map, pos, dir) {
   })
 }
 
+fn print(map, pos, options) {
+  let o =
+    options
+    |> dict.values
+    |> list.map(pair.second)
+    |> list.fold(set.new(), set.union)
+  let #(w, h) =
+    map
+    |> set.to_list
+    |> list.reduce(fn(a, b) {
+      #(
+        int.max(pair.first(a), pair.first(b)),
+        int.max(pair.second(a), pair.second(b)),
+      )
+    })
+    |> unwrap
+  iterator.range(0, h)
+  |> iterator.each(fn(y) {
+    iterator.range(0, w)
+    |> iterator.map(fn(x) {
+      let p = #(x, y)
+      let o = set.contains(o, p)
+      case set.contains(map, p) {
+        False -> " "
+        True if pos == p -> "." |> ansi.bg_green
+        True if o -> "." |> ansi.bg_white
+        True -> "."
+      }
+    })
+    |> iterator.to_list
+    |> string.join("")
+    |> io.println
+  })
+}
+
 fn find(map, pos, dir, tc, hist, options, end, max) {
   let o =
     next(map, pos, dir)
@@ -130,6 +166,7 @@ fn find(map, pos, dir, tc, hist, options, end, max) {
         }
       })
     })
+
   let next =
     o
     |> dict.fold(#(max, []), fn(acc, k, v) {
@@ -144,7 +181,10 @@ fn find(map, pos, dir, tc, hist, options, end, max) {
     })
     |> pair.second
   case next {
-    [] -> #(max, hist)
+    [] -> {
+      print(map, pos, o)
+      #(max, hist)
+    }
     [#(p, d, c, h), ..] if p == end ->
       find(map, p, d, c, set.union(h, hist), o |> dict.delete(#(p, d)), end, c)
     [#(p, d, c, h), ..] ->
