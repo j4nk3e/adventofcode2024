@@ -1,3 +1,4 @@
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/regex
@@ -22,6 +23,10 @@ pub fn reduce(l, f) {
   l
   |> list.reduce(f)
   |> unwrap
+}
+
+pub fn pow(b, p) {
+  int.power(b, p |> int.to_float) |> unwrap |> float.round
 }
 
 pub fn id(a) {
