@@ -1,11 +1,10 @@
 import argv
+import gleam/dict
 import gleam/int
 import gleam/io
 import gleam/iterator
 import gleam/list
-import gleam/result
 import gleam/string
-import parallel_map
 import stdin.{stdin}
 import util.{parse}
 
@@ -60,69 +59,34 @@ fn a() {
   |> int.to_string
 }
 
-fn window(n, w, seq, sec) {
+fn window(n, seq, s, dic) {
   case n {
-    0 -> 0
-    _ ->
-      case w {
-        h if seq == h -> ones(sec)
-        _ -> {
-          let ns = next(sec)
-          let d = ones(ns) - ones(sec)
-          let w =
-            w |> list.reverse |> list.take(3) |> list.prepend(d) |> list.reverse
-          window(n - 1, w, seq, ns)
-        }
-      }
-  }
-}
-
-fn all_seq(ps) {
-  let s = next_seq(ps)
-  case s {
-    [] -> []
-    _ -> [s, ..all_seq(s)]
-  }
-}
-
-fn next_seq(s) {
-  let assert [a, b, c, d] = s
-  case d {
-    9 -> {
-      case c {
-        9 -> {
-          case b {
-            9 -> {
-              case a {
-                9 -> []
-                _ -> [a + 1, -9, -9, -9]
-              }
-            }
-            _ -> [a, b + 1, -9, -9]
+    0 -> dic
+    _ -> {
+      let ns = next(s)
+      let diff = ones(ns) - ones(s)
+      let seq = [diff, ..seq]
+      let dic = case seq {
+        [a, b, c, d, ..] -> {
+          case dict.has_key(dic, #(a, b, c, d)) {
+            True -> dic
+            False -> dict.insert(dic, #(a, b, c, d), ones(ns))
           }
         }
-        _ -> [a, b, c + 1, -9]
+        _ -> dic
       }
+      window(n - 1, seq, ns, dic)
     }
-    _ -> [a, b, c, d + 1]
   }
 }
 
 fn b() {
-  let n = in()
-  all_seq([-9, -9, -9, -9])
-  |> parallel_map.list_pmap(
-    fn(seq) {
-      io.debug(seq)
-      list.fold(n, 0, fn(acc, s) {
-        let r = window(2000, [], seq, s)
-        acc + r
-      })
-    },
-    parallel_map.MatchSchedulersOnline,
-    10_000,
-  )
-  |> result.values
+  in()
+  |> list.fold(dict.new(), fn(acc, s) {
+    let d = window(2000, [], s, dict.new())
+    dict.combine(acc, d, int.add)
+  })
+  |> dict.values
   |> list.reduce(int.max)
   |> util.unwrap
   |> int.to_string
